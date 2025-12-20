@@ -541,10 +541,10 @@ const App = () => {
               </h5>
               <div className="space-y-3 text-slate-400 text-sm">
                 <div className="flex items-center gap-2 justify-center md:justify-start hover:text-white transition cursor-pointer">
-                  <Phone size={14} /> +966 50 000 0000
+                  <Phone size={14} /> +201279796160
                 </div>
                 <div className="flex items-center gap-2 justify-center md:justify-start hover:text-white transition cursor-pointer">
-                  <Mail size={14} /> support@ramybooks.com
+                  <Mail size={14} /> tiktok.com/@ramy.el3bd2025
                 </div>
               </div>
             </div>
