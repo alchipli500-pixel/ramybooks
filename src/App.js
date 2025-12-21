@@ -25,36 +25,27 @@ import {
   DollarSign,
   BarChart3
 } from 'lucide-react';
-import { initializeApp } from "firebase/app";
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
-
-// --- إعدادات فايربيس وقاعدة البيانات ---
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 const apiKey = ""; 
 
 const INITIAL_PRODUCTS = [
-  { name: "رواية مئة عام من العزلة", category: "روايات", price: 80, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
+  { id: 1, name: "رواية مئة عام من العزلة", category: "روايات", price: 15, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
   { name: "روايه ابابيل", category: "روايات", price: 70, image: "https://m.media-amazon.com/images/I/51Vyq7ni0iL._AC_UF894,1000_QL80_.jpg", description: "الحب هو التوأم اللطيف للموت ملحمه احمد ال حمدان." },
-  { name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 70, image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400", description: "دليل في القوة والسيطرة لروبرت غرين." },
-  { name: "فاصل كتاب جلدي يدوي", category: "إكسسوارات", price: 5, image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", description: "فاصل أنيق مصنوع من الجلد الطبيعي." },
+  { id: 2, name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 20, image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400", description: "دليل في القوة والسيطرة لروبرت غرين." },
+  { id: 3, name: "فاصل كتاب جلدي يدوي", category: "إكسسوارات", price: 5, image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", description: "فاصل أنيق مصنوع من الجلد الطبيعي." },
 ];
 
 const App = () => {
   const [view, setView] = useState('user'); 
-  const [user, setUser] = useState(null); // حالة المستخدم للمصادقة مع قاعدة البيانات
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
-  // سيتم جلب المنتجات الآن من قاعدة البيانات السحابية
-  const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  // تعديل: تهيئة المنتجات من التخزين المحلي (Local Storage)
+  const [products, setProducts] = useState(() => {
+    const savedProducts = localStorage.getItem('ramy_books_products');
+    return savedProducts ? JSON.parse(savedProducts) : INITIAL_PRODUCTS;
+  });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
@@ -63,54 +54,10 @@ const App = () => {
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [userInterest, setUserInterest] = useState('');
 
-  // 1. تهيئة المصادقة مع قاعدة البيانات (مرة واحدة عند التشغيل)
+  // تعديل: حفظ المنتجات تلقائياً عند أي تغيير (إضافة أو حذف)
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error("Auth failed:", error);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
-
-  // 2. الاستماع للتغييرات في قاعدة البيانات (Real-time Sync)
-  useEffect(() => {
-    if (!user) return;
-
-    // استخدام مسار عام لكي يرى الجميع نفس المنتجات
-    const productsRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
-    
-    const unsubscribe = onSnapshot(productsRef, (snapshot) => {
-      const fetchedProducts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setProducts(fetchedProducts);
-      setLoadingProducts(false);
-    }, (error) => {
-      console.error("Firestore error:", error);
-      setLoadingProducts(false);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  // دالة لإضافة البيانات الافتراضية إذا كانت القاعدة فارغة (للتسهيل عليك)
-  const seedInitialData = async () => {
-    if (products.length > 0) return; // لا تضف إذا كان هناك بيانات
-    const productsRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
-    for (const prod of INITIAL_PRODUCTS) {
-      await addDoc(productsRef, prod);
-    }
-  };
+    localStorage.setItem('ramy_books_products', JSON.stringify(products));
+  }, [products]);
 
   const callGemini = async (prompt) => {
     if (!apiKey) return "يرجى إضافة مفتاح API لتفعيل المساعد الذكي.";
@@ -142,37 +89,31 @@ const App = () => {
     }
   };
 
-  const handleAddProduct = async (e) => {
+  const handleAddProduct = (e) => {
     e.preventDefault();
-    if (!user) return;
-
     const formData = new FormData(e.target);
     const newProduct = {
+      id: Date.now(),
       name: formData.get('name'),
-      price: parseFloat(formData.get('price')),
+      price: formData.get('price'),
       category: formData.get('category'),
       description: formData.get('description'),
-      image: formData.get('image') || "https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=400",
-      createdAt: Date.now()
+      image: formData.get('image') || "https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=400"
     };
+    setProducts([newProduct, ...products]);
+    e.target.reset();
+  };
 
-    try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'products'), newProduct);
-      e.target.reset();
-      alert("تمت إضافة المنتج بنجاح وسيظهر للجميع فوراً!");
-    } catch (error) {
-      alert("حدث خطأ أثناء الإضافة.");
+  const deleteProduct = (id) => {
+    if (window.confirm("هل أنت متأكد من حذف هذا المنتج؟")) {
+      setProducts(products.filter(p => p.id !== id));
     }
   };
 
-  const deleteProduct = async (id) => {
-    if (!user) return;
-    if (window.confirm("هل أنت متأكد من حذف هذا المنتج؟ سيختفي من عند جميع المستخدمين.")) {
-      try {
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', id));
-      } catch (error) {
-        alert("فشل الحذف، حاول مرة أخرى.");
-      }
+  // دالة لإعادة ضبط المصنع (اختياري، مفيد للتجارب)
+  const resetToDefault = () => {
+    if (window.confirm("هل تريد استعادة المنتجات الافتراضية وحذف التغييرات؟")) {
+      setProducts(INITIAL_PRODUCTS);
     }
   };
 
@@ -279,44 +220,29 @@ const App = () => {
             </div>
 
             {/* Product Grid */}
-            {loadingProducts ? (
-              <div className="flex justify-center items-center py-20 text-slate-400 flex-col gap-4">
-                <Loader2 className="animate-spin" size={40} />
-                <p>جاري تحميل المكتبة...</p>
-              </div>
-            ) : products.length === 0 ? (
-               <div className="text-center py-20">
-                 <p className="text-slate-500 text-lg mb-4">المكتبة فارغة حالياً</p>
-                 {/* زر للمساعدة في إضافة البيانات الأولية */}
-                 <button onClick={seedInitialData} className="text-indigo-600 underline text-sm font-bold">
-                   اضغط هنا لإضافة منتجات تجريبية
-                 </button>
-               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {filteredProducts.map(product => (
-                  <div key={product.id} className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all p-5 border border-slate-50 group flex flex-col">
-                    <div className="relative h-64 rounded-[2rem] overflow-hidden mb-6 bg-slate-50">
-                      <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt={product.name} />
-                      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-slate-900 shadow-sm uppercase">
-                        {product.category}
-                      </div>
-                    </div>
-                    <h3 className="font-bold text-slate-800 text-lg mb-2 px-2">{product.name}</h3>
-                    <p className="text-slate-400 text-xs mb-6 px-2 line-clamp-2 h-10 leading-relaxed">{product.description}</p>
-                    <div className="mt-auto flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
-                      <span className="text-2xl font-black text-slate-900">EPG{product.price}</span>
-                      <button 
-                        onClick={() => setCart([...cart, product])}
-                        className="bg-white text-slate-900 p-3 rounded-xl hover:bg-indigo-600 hover:text-white transition shadow-sm border border-slate-200"
-                      >
-                        <Plus size={20} />
-                      </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {filteredProducts.map(product => (
+                <div key={product.id} className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all p-5 border border-slate-50 group flex flex-col">
+                  <div className="relative h-64 rounded-[2rem] overflow-hidden mb-6 bg-slate-50">
+                    <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt={product.name} />
+                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-slate-900 shadow-sm uppercase">
+                      {product.category}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <h3 className="font-bold text-slate-800 text-lg mb-2 px-2">{product.name}</h3>
+                  <p className="text-slate-400 text-xs mb-6 px-2 line-clamp-2 h-10 leading-relaxed">{product.description}</p>
+                  <div className="mt-auto flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
+                    <span className="text-2xl font-black text-slate-900">${product.price}</span>
+                    <button 
+                      onClick={() => setCart([...cart, product])}
+                      className="bg-white text-slate-900 p-3 rounded-xl hover:bg-indigo-600 hover:text-white transition shadow-sm border border-slate-200"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           /* Admin Dashboard */
@@ -362,14 +288,14 @@ const App = () => {
                     <div className="bg-emerald-50 p-4 rounded-2xl text-emerald-600"><DollarSign size={32}/></div>
                     <div>
                       <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">إجمالي المخزون</p>
-                      <h4 className="text-3xl font-black">EPG{products.reduce((acc, p) => acc + Number(p.price), 0)}</h4>
+                      <h4 className="text-3xl font-black">${products.reduce((acc, p) => acc + Number(p.price), 0)}</h4>
                     </div>
                   </div>
                   <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6">
                     <div className="bg-amber-50 p-4 rounded-2xl text-amber-600"><BarChart3 size={32}/></div>
                     <div>
-                      <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">حالة المزامنة</p>
-                      <h4 className="text-3xl font-black text-green-500">نشطة</h4>
+                      <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">الأداء العام</p>
+                      <h4 className="text-3xl font-black">100%</h4>
                     </div>
                   </div>
                 </div>
@@ -386,7 +312,7 @@ const App = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر (EPG)</div>
+                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر ($)</div>
                           <input name="price" type="number" required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         </div>
                         <div>
@@ -405,14 +331,22 @@ const App = () => {
                       <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 text-right">وصف المنتج</div>
                       <textarea name="description" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 h-24"></textarea>
                       
-                      <button className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">نشر للجميع</button>
+                      <button className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">نشر في المتجر</button>
                     </form>
+                    
+                    {/* زر إعادة ضبط المصنع */}
+                    <button 
+                      onClick={resetToDefault} 
+                      className="w-full mt-4 bg-white text-slate-400 py-2 rounded-xl text-xs font-bold border border-slate-100 hover:bg-slate-50 hover:text-red-500 transition"
+                    >
+                      إعادة ضبط المصنع (حذف التعديلات)
+                    </button>
                   </div>
 
                   {/* Product List Manager */}
                   <div className="lg:col-span-2 bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden">
                     <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-                      <h2 className="text-xl font-black">قائمة المخزون المشتركة</h2>
+                      <h2 className="text-xl font-black">قائمة المخزون الحالية</h2>
                       <span className="text-xs font-bold text-slate-400 tracking-widest">{products.length} عنصر</span>
                     </div>
                     <div className="overflow-x-auto">
@@ -440,7 +374,6 @@ const App = () => {
                                 <button 
                                   onClick={() => deleteProduct(p.id)}
                                   className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-xl transition"
-                                  title="حذف من قاعدة البيانات"
                                 >
                                   <Trash2 size={18} />
                                 </button>
@@ -472,8 +405,8 @@ const App = () => {
             <div className="space-y-4">
               <h5 className="font-black text-white uppercase text-xs tracking-widest">تواصل سريع</h5>
               <div className="space-y-3 text-slate-400 text-sm">
-                <div className="flex items-center gap-2 justify-center md:justify-start hover:text-white transition cursor-pointer"><Phone size={14}/> +966 50 000 0000</div>
-                <div className="flex items-center gap-2 justify-center md:justify-start hover:text-white transition cursor-pointer"><Mail size={14}/> support@ramybooks.com</div>
+                <div className="flex items-center gap-2 justify-center md:justify-start hover:text-white transition cursor-pointer"><Phone size={14}/> +201279796160</div>
+                <div className="flex items-center gap-2 justify-center md:justify-start hover:text-white transition cursor-pointer"><Mail size={14}/> ramy books</div>
               </div>
             </div>
             <div className="space-y-4">
