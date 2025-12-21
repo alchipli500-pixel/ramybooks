@@ -16,11 +16,14 @@ import {
   Eye,
   EyeOff,
   Package,
-  DollarSign,
+  DollarSign, 
   BarChart3
 } from 'lucide-react';
 
-const apiKey = ""; 
+// ==========================================
+// 🔑 تم إضافة مفتاح Gemini API الخاص بك بنجاح 🔑
+const apiKey = "AIzaSyAtJieBrF-MosF0S0VngQMZ8w12eWG0pH4"; 
+// ==========================================
 
 const INITIAL_PRODUCTS = [
   { id: 1, name: "رواية مئة عام من العزلة", category: "روايات", price: 15, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
@@ -52,7 +55,10 @@ const App = () => {
   }, [products]);
 
   const callGemini = async (prompt) => {
-    if (!apiKey) return "يرجى إضافة مفتاح API لتفعيل المساعد الذكي.";
+    if (!apiKey || apiKey.trim() === "") {
+      return "⚠️ عذراً، يجب إضافة مفتاح Gemini API في كود التطبيق لتفعيل المساعد الذكي.";
+    }
+
     setAiLoading(true);
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
@@ -60,15 +66,20 @@ const App = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: "أنت مساعد ذكي في مكتبة Ramy Books. بأسلوب فخم وراقي." }] }
+          systemInstruction: { parts: [{ text: "أنت مساعد ذكي في مكتبة Ramy Books Boutique. أسلوبك فخم، مطلع، وتستخدم اللغة العربية الراقية. ساعد المستخدم في اختيار الكتب بناءً على ذوقه من الكتب المتوفرة في العالم أو اقترح عليه ما يناسب اهتمامه." }] }
         })
       });
+
+      if (!response.ok) {
+        throw new Error('فشل الاتصال بالخادم.');
+      }
+
       const result = await response.json();
       setAiLoading(false);
-      return result.candidates?.[0]?.content?.parts?.[0]?.text || "لم يتم العثور على رد.";
+      return result.candidates?.[0]?.content?.parts?.[0]?.text || "لم أتمكن من العثور على توصية مناسبة حالياً.";
     } catch (error) {
       setAiLoading(false);
-      return "خطأ في الاتصال بالمساعد الذكي.";
+      return "حدث خطأ أثناء محاولة التواصل مع الذكاء الاصطناعي. يرجى التحقق من المفتاح أو المحاولة لاحقاً.";
     }
   };
 
@@ -113,7 +124,6 @@ const App = () => {
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // ألوان التصميم الجديد (الأسود والذهبي)
   const colors = {
     primary: "#c5a059", // ذهبي
     secondary: "#1a1a1a", // أسود داكن
@@ -134,7 +144,7 @@ const App = () => {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}} />
 
-      {/* Navbar - New Style */}
+      {/* Navbar */}
       <nav className="black-bg text-white shadow-2xl sticky top-0 z-50 py-5">
         <div className="container mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('user')}>
@@ -143,7 +153,7 @@ const App = () => {
             </div>
             <div className="flex flex-col leading-none">
               <span className="text-xl md:text-2xl font-black tracking-tighter">RAMY</span>
-              <span className="gold-text text-xs font-bold tracking-[0.3em] uppercase">Books Store</span>
+              <span className="gold-text text-xs font-bold tracking-[0.3em] uppercase">Books Boutique</span>
             </div>
           </div>
           <div className="flex gap-4 items-center">
@@ -165,7 +175,7 @@ const App = () => {
       <main className="container mx-auto p-4 md:p-8 animate-fadeIn">
         {view === 'user' ? (
           <div>
-            {/* New Hero Section - Black & Gold Theme */}
+            {/* Hero Section */}
             <div className="mb-16 black-bg rounded-[1rem] p-8 md:p-20 text-white shadow-2xl relative overflow-hidden border border-white/5">
               <div className="absolute top-0 right-0 w-1/2 h-full opacity-5 bg-[radial-gradient(circle_at_100%_0%,#c5a059,transparent)]"></div>
               <div className="relative z-10 max-w-2xl space-y-8">
@@ -180,24 +190,34 @@ const App = () => {
                 <div className="flex gap-3 bg-white/[0.03] p-2 rounded-xl border border-white/10 backdrop-blur-md group focus-within:border-white/30 transition-all max-w-xl">
                   <input 
                     type="text" 
-                    placeholder="ماذا تود أن تقرأ اليوم؟"
+                    placeholder="ماذا تود أن تقرأ اليوم؟ (مثال: أحب روايات الخيال العلمي)"
                     className="flex-1 bg-transparent border-none px-4 text-white outline-none placeholder-slate-600 font-bold"
                     value={userInterest}
                     onChange={(e) => setUserInterest(e.target.value)}
+                    onKeyPress={async (e) => {
+                      if(e.key === 'Enter') {
+                        const res = await callGemini(`أنا مهتم بـ: ${userInterest}. اقترح لي قائمة كتب بأسلوب راقي.`);
+                        setAiRecommendation(res);
+                      }
+                    }}
                   />
                   <button 
                     onClick={async () => {
-                      const res = await callGemini(`بناءً على هذا الاهتمام: ${userInterest}، اقترح لي كتباً بأسلوب راقي.`);
+                      const res = await callGemini(`أنا مهتم بـ: ${userInterest}. اقترح لي قائمة كتب بأسلوب راقي.`);
                       setAiRecommendation(res);
                     }}
-                    className="gold-bg hover:opacity-90 p-4 rounded-lg shadow-xl transition active:scale-95"
+                    disabled={aiLoading}
+                    className="gold-bg hover:opacity-90 p-4 rounded-lg shadow-xl transition active:scale-95 disabled:opacity-50"
                   >
                     {aiLoading ? <Loader2 className="animate-spin text-black" /> : <Send size={20} className="text-black" />}
                   </button>
                 </div>
 
                 {aiRecommendation && (
-                  <div className="bg-white/5 p-6 rounded-xl border-r-2 border-[#c5a059] text-sm leading-loose text-slate-300 animate-fadeIn backdrop-blur-sm">
+                  <div className="bg-white/5 p-6 rounded-xl border-r-2 border-[#c5a059] text-sm leading-loose text-slate-300 animate-fadeIn backdrop-blur-sm whitespace-pre-line">
+                    <div className="flex items-center gap-2 mb-4 gold-text font-black text-xs uppercase tracking-widest">
+                       <Sparkles size={14} /> اقتراحات رامي الذكية
+                    </div>
                     {aiRecommendation}
                   </div>
                 )}
@@ -254,7 +274,7 @@ const App = () => {
             </div>
           </div>
         ) : (
-          /* Admin Dashboard - Clean Minimal Style */
+          /* Admin Dashboard */
           <div className="max-w-6xl mx-auto py-10">
             {!isAdminAuthenticated ? (
               <div className="max-w-md mx-auto bg-white p-16 rounded-xl shadow-2xl text-center border border-slate-100 animate-fadeIn">
@@ -289,7 +309,6 @@ const App = () => {
                   <button onClick={() => setIsAdminAuthenticated(false)} className="text-xs font-black uppercase tracking-widest text-red-500 border-b border-red-500 pb-1">Sign Out</button>
                 </div>
 
-                {/* Dashboard Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div key="stat-1" className="bg-white p-8 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
                     <div>
@@ -373,7 +392,7 @@ const App = () => {
         )}
       </main>
 
-      {/* Footer - New Luxurious Style */}
+      {/* Footer */}
       <footer className="black-bg text-white py-24 mt-32 border-t border-white/5 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 gold-bg opacity-30"></div>
         <div className="container mx-auto px-10 space-y-16">
@@ -388,15 +407,15 @@ const App = () => {
             <div className="space-y-6">
               <h5 className="font-black text-white uppercase text-xs tracking-[0.3em] gold-text">Inquiries</h5>
               <div className="space-y-4 text-slate-400 text-sm font-bold">
-                <div key="f-phone" className="flex items-center gap-3 justify-center md:justify-start hover:text-white transition cursor-pointer leading-none"><Phone size={14} className="gold-text"/> +201279796160</div>
-                <div key="f-mail" className="flex items-center gap-3 justify-center md:justify-start hover:text-white transition cursor-pointer leading-none"><Mail size={14} className="gold-text"/> info@ramybooks.com</div>
+                <div className="flex items-center gap-3 justify-center md:justify-start hover:text-white transition cursor-pointer leading-none"><Phone size={14} className="gold-text"/> +201279796160</div>
+                <div className="flex items-center gap-3 justify-center md:justify-start hover:text-white transition cursor-pointer leading-none"><Mail size={14} className="gold-text"/> info@ramybooks.com</div>
               </div>
             </div>
             <div className="space-y-6">
               <h5 className="font-black text-white uppercase text-xs tracking-[0.3em] gold-text">Collection</h5>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                 {['RIVALS', 'CLASSICS', 'FICTION', 'HISTORY', 'LUXURY'].map(t => (
-                  <span key={`tag-${t}`} className="bg-white/5 border border-white/10 px-4 py-1 rounded text-[9px] font-black tracking-widest hover:gold-bg hover:text-black transition cursor-pointer">{t}</span>
+                  <span key={t} className="bg-white/5 border border-white/10 px-4 py-1 rounded text-[9px] font-black tracking-widest hover:gold-bg hover:text-black transition cursor-pointer">{t}</span>
                 ))}
               </div>
             </div>
