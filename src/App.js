@@ -385,7 +385,7 @@ const App = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر ($)</div>
+                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر (EGP)</div>
                           <input name="price" type="number" required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         </div>
                         <div>
