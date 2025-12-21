@@ -39,9 +39,8 @@ const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const apiKey = ""; 
 
 const INITIAL_PRODUCTS = [
-  { name: "رواية مئة عام من العزلة", category: "روايات", price: 90, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
-  { name: "روايه ابابيل", category: "روايات", price: 70, image: "https://m.media-amazon.com/images/I/51Vyq7ni0iL._AC_UF894,1000_QL80_.jpg", description: "الحب هو التوأم اللطيف للموت ملحمه احمد ال حمدان." },
-  { name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 70, image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400", description: "دليل في القوة والسيطرة لروبرت غرين." },
+  { name: "رواية مئة عام من العزلة", category: "روايات", price: 15, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
+  { name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 20, image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400", description: "دليل في القوة والسيطرة لروبرت غرين." },
   { name: "فاصل كتاب جلدي يدوي", category: "إكسسوارات", price: 5, image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", description: "فاصل أنيق مصنوع من الجلد الطبيعي." },
 ];
 
@@ -138,7 +137,7 @@ const App = () => {
     if (adminPassword === 'ramy123') {
       setIsAdminAuthenticated(true);
     } else {
-      alert('كلمة مرور خاطئة! جرب: again');
+      alert('كلمة مرور خاطئة! جرب: ramy123');
     }
   };
 
@@ -386,7 +385,7 @@ const App = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر (EGP)</div>
+                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر ($)</div>
                           <input name="price" type="number" required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         </div>
                         <div>
