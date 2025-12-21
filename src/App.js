@@ -39,8 +39,9 @@ const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const apiKey = ""; 
 
 const INITIAL_PRODUCTS = [
-  { name: "رواية مئة عام من العزلة", category: "روايات", price: 15, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
-  { name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 20, image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400", description: "دليل في القوة والسيطرة لروبرت غرين." },
+  { name: "رواية مئة عام من العزلة", category: "روايات", price: 80, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
+  { name: "روايه ابابيل", category: "روايات", price: 70, image: "https://m.media-amazon.com/images/I/51Vyq7ni0iL._AC_UF894,1000_QL80_.jpg", description: "الحب هو التوأم اللطيف للموت ملحمه احمد ال حمدان." },
+  { name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 70, image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400", description: "دليل في القوة والسيطرة لروبرت غرين." },
   { name: "فاصل كتاب جلدي يدوي", category: "إكسسوارات", price: 5, image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", description: "فاصل أنيق مصنوع من الجلد الطبيعي." },
 ];
 
@@ -304,7 +305,7 @@ const App = () => {
                     <h3 className="font-bold text-slate-800 text-lg mb-2 px-2">{product.name}</h3>
                     <p className="text-slate-400 text-xs mb-6 px-2 line-clamp-2 h-10 leading-relaxed">{product.description}</p>
                     <div className="mt-auto flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
-                      <span className="text-2xl font-black text-slate-900">${product.price}</span>
+                      <span className="text-2xl font-black text-slate-900">EPG{product.price}</span>
                       <button 
                         onClick={() => setCart([...cart, product])}
                         className="bg-white text-slate-900 p-3 rounded-xl hover:bg-indigo-600 hover:text-white transition shadow-sm border border-slate-200"
@@ -361,7 +362,7 @@ const App = () => {
                     <div className="bg-emerald-50 p-4 rounded-2xl text-emerald-600"><DollarSign size={32}/></div>
                     <div>
                       <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">إجمالي المخزون</p>
-                      <h4 className="text-3xl font-black">${products.reduce((acc, p) => acc + Number(p.price), 0)}</h4>
+                      <h4 className="text-3xl font-black">EPG{products.reduce((acc, p) => acc + Number(p.price), 0)}</h4>
                     </div>
                   </div>
                   <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6">
@@ -385,7 +386,7 @@ const App = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر ($)</div>
+                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر (EPG)</div>
                           <input name="price" type="number" required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         </div>
                         <div>
