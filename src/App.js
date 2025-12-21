@@ -85,7 +85,7 @@ const App = () => {
     if (adminPassword === 'ramy123') {
       setIsAdminAuthenticated(true);
     } else {
-      alert('كلمة مرور خاطئة! جرب: ramy123');
+      alert('كلمة مرور خاطئة! جرب: again');
     }
   };
 
@@ -232,7 +232,7 @@ const App = () => {
                   <h3 className="font-bold text-slate-800 text-lg mb-2 px-2">{product.name}</h3>
                   <p className="text-slate-400 text-xs mb-6 px-2 line-clamp-2 h-10 leading-relaxed">{product.description}</p>
                   <div className="mt-auto flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
-                    <span className="text-2xl font-black text-slate-900">${product.price}</span>
+                    <span className="text-2xl font-black text-slate-900">EGP{product.price}</span>
                     <button 
                       onClick={() => setCart([...cart, product])}
                       className="bg-white text-slate-900 p-3 rounded-xl hover:bg-indigo-600 hover:text-white transition shadow-sm border border-slate-200"
@@ -312,7 +312,7 @@ const App = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر ($)</div>
+                          <div className="space-y-2 text-xs font-bold text-slate-500 mr-2 mb-2 text-right">السعر (EGP)</div>
                           <input name="price" type="number" required className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         </div>
                         <div>
@@ -369,7 +369,7 @@ const App = () => {
                               <td className="px-6 py-4">
                                 <span className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black">{p.category}</span>
                               </td>
-                              <td className="px-6 py-4 font-black text-slate-900">${p.price}</td>
+                              <td className="px-6 py-4 font-black text-slate-900">EGP{p.price}</td>
                               <td className="px-6 py-4">
                                 <button 
                                   onClick={() => deleteProduct(p.id)}
