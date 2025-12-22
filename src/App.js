@@ -26,9 +26,9 @@ const apiKey = "AIzaSyAtJieBrF-MosF0S0VngQMZ8w12eWG0pH4";
 // ==========================================
 
 const INITIAL_PRODUCTS = [
-  { id: 1, name: "رواية مئة عام من العزلة", category: "روايات", price: 15, image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
+  { id: 1, name: "رواية مئة عام من العزلة", category: "روايات", price: 80, image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTZ-ZUsQiPy9zpKSY6yZXUDXUGy2hUBiKZjsA&s", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
   { id: "ababil", name: "روايه ابابيل", category: "روايات", price: 70, image: "https://m.media-amazon.com/images/I/51Vyq7ni0iL._AC_UF894,1000_QL80_.jpg", description: "الحب هو التوأم اللطيف للموت ملحمه احمد ال حمدان." },
-  { id: 2, name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 20, image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400", description: "دليل في القوة والسيطرة لروبرت غرين." },
+  { id: 2, name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 100, image: "https://eg.jumia.is/unsafe/fit-in/500x500/filters:fill(white)/product/74/494599/1.jpg?4900", description: "دليل في القوة والسيطرة لروبرت غرين." },
   { id: 3, name: "فاصل كتاب جلدي يدوي", category: "إكسسوارات", price: 5, image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", description: "فاصل أنيق مصنوع من الجلد الطبيعي." },
 ];
 
