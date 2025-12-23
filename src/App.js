@@ -1,4 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  onAuthStateChanged,
+  signInWithCustomToken 
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  deleteDoc, 
+  doc, 
+  onSnapshot, 
+  serverTimestamp 
+} from 'firebase/firestore';
 import { 
   BookOpen, 
   ShoppingBag, 
@@ -17,20 +33,33 @@ import {
   EyeOff,
   Package,
   DollarSign, 
-  BarChart3
+  BarChart3,
+  WifiOff
 } from 'lucide-react';
 
 // ==========================================
-// 🔑 تم إضافة مفتاح Gemini API الخاص بك بنجاح 🔑
-const apiKey = "AIzaSyAtJieBrF-MosF0S0VngQMZ8w12eWG0pH4"; 
+// 🔑 إعدادات Firebase الخاصة بك 🔑
+const firebaseConfig = {
+  apiKey: "AIzaSyDfbfbVZTno9gecFFxUKbjk_1X37aH2IPo",
+  authDomain: "ramy-b4619.firebaseapp.com",
+  projectId: "ramy-b4619",
+  storageBucket: "ramy-b4619.firebasestorage.app",
+  messagingSenderId: "416507306850",
+  appId: "1:416507306850:web:84057fdfa19c506c3b023b",
+  measurementId: "G-QZZMNHZEME"
+};
+
+// مفتاح Gemini API
+const geminiApiKey = "AIzaSyAtJieBrF-MosF0S0VngQMZ8w12eWG0pH4"; 
 // ==========================================
 
-const INITIAL_PRODUCTS = [
-  { id: 1, name: "رواية مئة عام من العزلة", category: "روايات", price: 80, image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTZ-ZUsQiPy9zpKSY6yZXUDXUGy2hUBiKZjsA&s", description: "ملحمة عائلية كولومبية شهيرة لجابرييل غارسيا ماركيز." },
-  { id: "ababil", name: "روايه ابابيل", category: "روايات", price: 70, image: "https://m.media-amazon.com/images/I/51Vyq7ni0iL._AC_UF894,1000_QL80_.jpg", description: "الحب هو التوأم اللطيف للموت ملحمه احمد ال حمدان." },
-  { id: 2, name: "كتاب القوانين الـ 48 للقوة", category: "كتب", price: 100, image: "https://eg.jumia.is/unsafe/fit-in/500x500/filters:fill(white)/product/74/494599/1.jpg?4900", description: "دليل في القوة والسيطرة لروبرت غرين." },
-  { id: 3, name: "فاصل كتاب جلدي يدوي", category: "إكسسوارات", price: 5, image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400", description: "فاصل أنيق مصنوع من الجلد الطبيعي." },
-];
+// تهيئة Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// معرف التطبيق للبيئة الحالية (مهم جداً للتخزين الصحيح)
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 const App = () => {
   const [view, setView] = useState('user'); 
@@ -38,10 +67,11 @@ const App = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
-  const [products, setProducts] = useState(() => {
-    const savedProducts = localStorage.getItem('ramy_books_products');
-    return savedProducts ? JSON.parse(savedProducts) : INITIAL_PRODUCTS;
-  });
+  // حالة البيانات والمستخدم
+  const [user, setUser] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isFallbackMode, setIsFallbackMode] = useState(false); // وضع الطوارئ في حال انقطاع الاتصال
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
@@ -50,36 +80,87 @@ const App = () => {
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [userInterest, setUserInterest] = useState('');
 
+  // 1. تسجيل الدخول التلقائي (Anonymous Auth) لتمكين قراءة/كتابة البيانات
   useEffect(() => {
-    localStorage.setItem('ramy_books_products', JSON.stringify(products));
-  }, [products]);
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("Auth Error:", err);
+        setIsFallbackMode(true); // تفعيل الوضع المحلي في حال الخطأ
+      }
+    };
+    initAuth();
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) setIsFallbackMode(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. التزامن اللحظي مع قاعدة البيانات (Firestore)
+  useEffect(() => {
+    if (isFallbackMode) {
+        // تحميل من LocalStorage في حال وضع الطوارئ
+        const saved = localStorage.getItem('ramy_books_products');
+        if (saved) setProducts(JSON.parse(saved));
+        setLoading(false);
+        return;
+    }
+
+    if (!user) return;
+
+    // المسار الصحيح للبيانات العامة
+    const productsRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
+
+    const unsubscribe = onSnapshot(productsRef, (snapshot) => {
+      const productsList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      // ترتيب المنتجات: الأحدث أولاً
+      productsList.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+      });
+
+      setProducts(productsList);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore Sync Error:", error);
+      setIsFallbackMode(true); // التحويل للوضع المحلي عند حدوث خطأ
+    });
+
+    return () => unsubscribe();
+  }, [user, isFallbackMode]);
 
   const callGemini = async (prompt) => {
-    if (!apiKey || apiKey.trim() === "") {
-      return "⚠️ عذراً، يجب إضافة مفتاح Gemini API في كود التطبيق لتفعيل المساعد الذكي.";
-    }
+    if (!geminiApiKey) return "⚠️ عذراً، يجب التأكد من مفتاح API.";
 
     setAiLoading(true);
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: "أنت مساعد ذكي في مكتبة Ramy Books Boutique. أسلوبك فخم، مطلع، وتستخدم اللغة العربية الراقية. ساعد المستخدم في اختيار الكتب بناءً على ذوقه من الكتب المتوفرة في العالم أو اقترح عليه ما يناسب اهتمامه." }] }
+          systemInstruction: { parts: [{ text: "أنت مساعد ذكي في مكتبة Ramy Books Boutique. أسلوبك فخم، مطلع، وتستخدم اللغة العربية الراقية." }] }
         })
       });
-
-      if (!response.ok) {
-        throw new Error('فشل الاتصال بالخادم.');
-      }
 
       const result = await response.json();
       setAiLoading(false);
       return result.candidates?.[0]?.content?.parts?.[0]?.text || "لم أتمكن من العثور على توصية مناسبة حالياً.";
     } catch (error) {
       setAiLoading(false);
-      return "حدث خطأ أثناء محاولة التواصل مع الذكاء الاصطناعي. يرجى التحقق من المفتاح أو المحاولة لاحقاً.";
+      return "حدث خطأ أثناء التواصل مع المساعد الذكي.";
     }
   };
 
@@ -92,44 +173,74 @@ const App = () => {
     }
   };
 
-  const handleAddProduct = (e) => {
+  // إضافة منتج (يدعم Firebase + الوضع المحلي)
+  const handleAddProduct = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const newProduct = {
-      id: Date.now(),
+    
+    const newProductData = {
       name: formData.get('name'),
-      price: formData.get('price'),
+      price: Number(formData.get('price')), // تحويل السعر لرقم
       category: formData.get('category'),
       description: formData.get('description'),
-      image: formData.get('image') || "https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=400"
+      image: formData.get('image') || "https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80&w=400",
+      createdAt: serverTimestamp() // توقيت السيرفر للترتيب
     };
-    setProducts([newProduct, ...products]);
-    e.target.reset();
-  };
 
-  const deleteProduct = (id) => {
-    if (window.confirm("هل أنت متأكد من حذف هذا المنتج؟")) {
-      setProducts(products.filter(p => p.id !== id));
+    try {
+      if (isFallbackMode) {
+         // إضافة محلية مؤقتة
+         const localProduct = { ...newProductData, id: Date.now(), createdAt: { seconds: Date.now() / 1000 } };
+         const updated = [localProduct, ...products];
+         setProducts(updated);
+         localStorage.setItem('ramy_books_products', JSON.stringify(updated));
+      } else {
+         // إضافة لقاعدة البيانات
+         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'products'), newProductData);
+      }
+      e.target.reset();
+    } catch (err) {
+      alert("حدث خطأ أثناء الإضافة: " + err.message);
     }
   };
 
-  const resetToDefault = () => {
-    if (window.confirm("استعادة المنتجات الأصلية؟")) {
-      setProducts(INITIAL_PRODUCTS);
+  // حذف منتج
+  const deleteProduct = async (id) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذا المنتج؟")) return;
+
+    try {
+      if (isFallbackMode) {
+        const updated = products.filter(p => p.id !== id);
+        setProducts(updated);
+        localStorage.setItem('ramy_books_products', JSON.stringify(updated));
+      } else {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', id));
+      }
+    } catch (err) {
+      console.error("Delete Error:", err);
+      alert("فشل الحذف");
     }
   };
 
   const filteredProducts = products.filter(p => 
     (selectedCategory === 'الكل' || p.category === selectedCategory) &&
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.name?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
   const colors = {
-    primary: "#c5a059", // ذهبي
-    secondary: "#1a1a1a", // أسود داكن
+    primary: "#c5a059",
+    secondary: "#1a1a1a",
     bg: "#fcfcfc",
     text: "#000000"
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#fcfcfc]" dir="rtl">
+        <Loader2 className="w-10 h-10 animate-spin text-[#c5a059]" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-right" dir="rtl">
@@ -157,6 +268,11 @@ const App = () => {
             </div>
           </div>
           <div className="flex gap-4 items-center">
+            {isFallbackMode && (
+               <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 px-3 py-1 rounded-full text-[10px] font-bold border border-amber-500/20">
+                 <WifiOff size={12} /> وضع محلي
+               </div>
+            )}
             <button 
               onClick={() => { setView(view === 'user' ? 'admin' : 'user'); setIsAdminAuthenticated(false); }}
               className="hover:gold-text px-2 py-1 text-sm font-bold transition flex items-center gap-2 border-b border-transparent hover:border-white"
@@ -327,7 +443,9 @@ const App = () => {
                   <div key="stat-3" className="bg-white p-8 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
                     <div>
                       <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Status</p>
-                      <h4 className="text-4xl font-black gold-text italic">Active</h4>
+                      <h4 className={`text-4xl font-black italic ${isFallbackMode ? 'text-amber-500' : 'gold-text'}`}>
+                        {isFallbackMode ? 'Local' : 'Live'}
+                      </h4>
                     </div>
                     <div className="black-bg p-4 rounded-lg text-white"><BarChart3 size={24}/></div>
                   </div>
@@ -350,7 +468,6 @@ const App = () => {
                       <textarea name="description" placeholder="DESCRIPTION" className="w-full p-4 bg-slate-50 rounded-lg outline-none font-bold text-sm h-32"></textarea>
                       <button className="w-full black-bg text-white py-5 rounded-lg font-black uppercase text-[10px] tracking-[0.3em] hover:gold-bg hover:text-black transition-all">Add to Boutique</button>
                     </form>
-                    <button onClick={resetToDefault} className="w-full mt-6 text-[10px] font-black uppercase text-slate-300 hover:text-red-500 transition">Reset All Data</button>
                   </div>
 
                   <div className="lg:col-span-2 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden">
