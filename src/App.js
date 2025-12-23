@@ -80,18 +80,27 @@ const App = () => {
   const [aiRecommendation, setAiRecommendation] = useState('');
   const [userInterest, setUserInterest] = useState('');
 
-  // 1. تسجيل الدخول التلقائي (Anonymous Auth) لتمكين قراءة/كتابة البيانات
+  // 1. تسجيل الدخول الذكي (يتعامل مع أخطاء التوكن تلقائياً)
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // محاولة استخدام التوكن المخصص أولاً إذا وجد
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
+          try {
+            await signInWithCustomToken(auth, __initial_auth_token);
+            return; // نجاح، نخرج من الدالة
+          } catch (tokenError) {
+            console.warn("Custom token mismatch, falling back to anonymous auth...", tokenError);
+            // إذا فشل التوكن (بسبب اختلاف المشاريع)، نكمل لتجربة الدخول المجهول
+          }
         }
+        
+        // الدخول المجهول كحل أساسي أو بديل
+        await signInAnonymously(auth);
+        
       } catch (err) {
-        console.error("Auth Error:", err);
-        setIsFallbackMode(true); // تفعيل الوضع المحلي في حال الخطأ
+        console.error("Auth Error (All methods failed):", err);
+        setIsFallbackMode(true); // تفعيل الوضع المحلي فقط إذا فشلت كل المحاولات
       }
     };
     initAuth();
